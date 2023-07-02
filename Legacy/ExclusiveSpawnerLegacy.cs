@@ -7,7 +7,7 @@ using VRC.Udon;
 namespace Varyu.ExclusiveSpawner
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-    public class ExclusiveSpawner : UdonSharpBehaviour
+    public class ExclusiveSpawnerLegacy : UdonSharpBehaviour
     {
         [SerializeField] private Transform VRCWorldSpawn;
         [SerializeField] private Transform[] SpawnPoints;
