@@ -14,8 +14,9 @@ namespace Varyu.ExclusiveSpawner
 
             [UdonSynced] public int[] RoomUserArray;
             private int localPlayerId = -1;
-            private int delayFrame = -1;
             private VRCPlayerApi _localPlayer;
+            private bool isAssigned = false;
+            private int delayFrame => Random.Range(0, 30);
 
             void Start()
             {
@@ -31,16 +32,22 @@ namespace Varyu.ExclusiveSpawner
                   localPlayerId = _localPlayer.playerId;
             }
 
+            /// <summary>
+            /// 部屋の割り当てを行う
+            /// </summary>
             public void AssignRoom()
             {
+                  RequestSerialization();
+                  Networking.SetOwner(_localPlayer, gameObject);
+
                   for (int i = 0; i < RoomUserArray.Length; i++)
                   {
-                        Networking.SetOwner(_localPlayer, gameObject);
-                        RequestSerialization();
+                        // 空き部屋があったら自分のIdを登録する
                         if (RoomUserArray[i] == -1)
                         {
                               RoomUserArray[i] = localPlayerId;
-                              TeleportSequence(i);
+                              // 部屋の割り当てが成功したかチェックする
+                              SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
                               break;
                         }
                   }
@@ -62,16 +69,36 @@ namespace Varyu.ExclusiveSpawner
                   }
             }
 
+            /// <summary>
+            /// 自分が適切に割り当てられているかチェック
+            /// </summary>
+            public void CheckAssign()
+            {
+                  if (isAssigned) return;
+
+                  RequestSerialization();
+                  for (int i = 0; i < RoomUserArray.Length; i++)
+                  {
+                        if (RoomUserArray[i] == localPlayerId)
+                        {
+                              // ちゃんと割り当てられていたらテレポート
+                              TeleportSequence(i);
+                              isAssigned = true;
+                              return;
+                        }
+                  }
+
+                  // 割り当てが無かったら部屋の割り当てをランダム遅延実行
+                  SendCustomEventDelayedFrames(nameof(AssignRoom), delayFrame);
+            }
+
             public override void OnPlayerJoined(VRCPlayerApi player)
             {
                   // 必要なかったら終わり
                   if (!Utilities.IsValid(player)) return;
                   if (!player.isLocal) return;
 
-                  // 部屋の割り当てを遅延実行
-                  // 同時にJoinした人がいた場合の安全策
-                  delayFrame = localPlayerId % RoomUserArray.Length;
-                  SendCustomEventDelayedFrames(nameof(AssignRoom), delayFrame * 3);
+                  CheckAssign();
             }
             public override void OnPlayerLeft(VRCPlayerApi player)
             {
@@ -79,6 +106,7 @@ namespace Varyu.ExclusiveSpawner
 
                   for (int i = 0; i < RoomUserArray.Length; i++)
                   {
+                        // Leaveしたプレイヤーが使っていた要素を-1にする
                         if (RoomUserArray[i] == player.playerId)
                         {
                               RoomUserArray[i] = -1;
