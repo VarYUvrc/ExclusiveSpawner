@@ -35,6 +35,7 @@ namespace Varyu.ExclusiveSpawner
 
             localPlayerId = _localPlayer.playerId;
             checkedCount = 0;
+            isAssigned = false;
         }
 
         /// <summary>
@@ -77,8 +78,6 @@ namespace Varyu.ExclusiveSpawner
         /// </summary>
         public void CheckAssign()
         {
-            if (isAssigned) return;
-
             RequestSerialization();
             for (int i = 0; i < RoomUserArray.Length; i++)
             {
@@ -93,7 +92,7 @@ namespace Varyu.ExclusiveSpawner
                     }
 
                     // ちゃんと割り当てられていたらテレポート
-                    TeleportSequence(i);
+                    if (!isAssigned) TeleportSequence(i);
                     isAssigned = true;
                     return;
                 }
@@ -107,7 +106,13 @@ namespace Varyu.ExclusiveSpawner
         {
             // 必要なかったら終わり
             if (!Utilities.IsValid(player)) return;
-            if (!player.isLocal) return;
+
+            CheckAssign();
+        }
+
+        public override void OnPlayerRespawn(VRCPlayerApi player)
+        {
+            if (!Utilities.IsValid(player)) return;
 
             CheckAssign();
         }
