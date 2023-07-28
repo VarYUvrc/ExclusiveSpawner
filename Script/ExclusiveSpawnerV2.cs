@@ -8,12 +8,15 @@ namespace Varyu.ExclusiveSpawner
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ExclusiveSpawnerV2 : UdonSharpBehaviour
     {
+        private const int CHECK_COUNT = 4;
+
         [SerializeField] private Transform VRCWorldSpawn;
         [SerializeField] private Transform[] SpawnPoints;
         [SerializeField] private GameObject EnableObject;
 
         [UdonSynced] public int[] RoomUserArray;
         private int localPlayerId = -1;
+        private int checkedCount = 0;
         private VRCPlayerApi _localPlayer;
         private bool isAssigned = false;
         private int delayFrame => Random.Range(0, 30);
@@ -30,6 +33,7 @@ namespace Varyu.ExclusiveSpawner
             }
 
             localPlayerId = _localPlayer.playerId;
+            checkedCount = 0;
         }
 
         /// <summary>
@@ -79,6 +83,14 @@ namespace Varyu.ExclusiveSpawner
             {
                 if (RoomUserArray[i] == localPlayerId)
                 {
+                    checkedCount++;
+                    if (checkedCount < CHECK_COUNT)
+                    {
+                        // チェック回数が足りなかったらもう一度チェック
+                        SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
+                        return;
+                    }
+
                     // ちゃんと割り当てられていたらテレポート
                     TeleportSequence(i);
                     isAssigned = true;
