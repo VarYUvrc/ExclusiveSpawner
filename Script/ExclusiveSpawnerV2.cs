@@ -8,6 +8,7 @@ namespace Varyu.ExclusiveSpawner
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ExclusiveSpawnerV2 : UdonSharpBehaviour
     {
+        /// <summary> 割り当てを確認する回数 </summary>
         private const int CHECK_COUNT = 4;
 
         [SerializeField] private Transform VRCWorldSpawn;
