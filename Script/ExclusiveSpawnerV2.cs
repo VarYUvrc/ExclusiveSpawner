@@ -59,12 +59,14 @@ namespace Varyu.ExclusiveSpawner
             }
         }
 
-        /// <summary> スポーン地点の設定 </summary>
-        private void SetSpawn(int roomNumber)
+        private void TeleportSequence(int roomNumber)
         {
             // ワールドスポーンを移動
             VRCWorldSpawn.position = SpawnPoints[roomNumber].position;
             VRCWorldSpawn.rotation = SpawnPoints[roomNumber].rotation;
+
+            // そこにワープ
+            _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
 
             // EnableObjectを移動して可視化
             EnableObject.transform.position = SpawnPoints[roomNumber].position;
@@ -89,16 +91,9 @@ namespace Varyu.ExclusiveSpawner
                         return;
                     }
 
-                    // チェック回数が足りたらスポーン地点変更
-                    SetSpawn(i);
-
-                    // 初回ならばテレポート
-                    if (!isAssigned)
-                    {
-                        _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
-                    }
+                    // ちゃんと割り当てられていたらテレポート
+                    if (!isAssigned) TeleportSequence(i);
                     isAssigned = true;
-
                     return;
                 }
             }
