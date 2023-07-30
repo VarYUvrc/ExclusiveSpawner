@@ -48,9 +48,11 @@ namespace Varyu.ExclusiveSpawner
                     RoomUserArray[i] = localPlayerId;
                     // 部屋の割り当てが成功したかチェックする
                     SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
-                    break;
+                    return;
                 }
             }
+            TeleportSequence(Random.Range(0, RoomUserArray.Length));
+            isAssigned = true;
         }
 
         private void TeleportSequence(int roomNumber)
@@ -84,8 +86,8 @@ namespace Varyu.ExclusiveSpawner
                     isAssigned = true;
                     return;
                 }
-            }
 
+            }
             // 割り当てが無かったら部屋の割り当てをランダムフレーム後に遅延実行
             SendCustomEventDelayedFrames(nameof(AssignRoom), delayFrame);
         }
