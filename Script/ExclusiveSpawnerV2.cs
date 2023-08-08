@@ -60,20 +60,6 @@ namespace Varyu.ExclusiveSpawner
             isAssigned = true;
         }
 
-        private void TeleportSequence(int roomNumber)
-        {
-            // ワールドスポーンを移動
-            VRCWorldSpawn.position = SpawnPoints[roomNumber].position;
-            VRCWorldSpawn.rotation = SpawnPoints[roomNumber].rotation;
-
-            // そこにワープ
-            _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
-
-            // EnableObjectを移動して可視化
-            EnableObject.transform.position = SpawnPoints[roomNumber].position;
-            EnableObject.SetActive(true);
-        }
-
         /// <summary>
         /// 自分が適切に割り当てられているかチェック
         /// </summary>
@@ -103,6 +89,19 @@ namespace Varyu.ExclusiveSpawner
             }
             // 割り当てが無かったら部屋の割り当てをランダムフレーム後に遅延実行
             SendCustomEventDelayedFrames(nameof(AssignRoom), delayFrame);
+        }
+        private void TeleportSequence(int roomNumber)
+        {
+            // ワールドスポーンを移動
+            VRCWorldSpawn.position = SpawnPoints[roomNumber].position;
+            VRCWorldSpawn.rotation = SpawnPoints[roomNumber].rotation;
+
+            // そこにワープ
+            _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
+
+            // EnableObjectを移動して可視化
+            EnableObject.transform.position = SpawnPoints[roomNumber].position;
+            EnableObject.SetActive(true);
         }
 
         public override void OnPlayerJoined(VRCPlayerApi player)
