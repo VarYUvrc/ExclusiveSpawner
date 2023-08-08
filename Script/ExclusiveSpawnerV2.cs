@@ -8,6 +8,8 @@ namespace Varyu.ExclusiveSpawner
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ExclusiveSpawnerV2 : UdonSharpBehaviour
     {
+        private const int MAX_CHECK_COUNT = 4;
+
         [SerializeField] private Transform VRCWorldSpawn;
         [SerializeField] private Transform[] SpawnPoints;
         [SerializeField] private GameObject EnableObject;
@@ -16,6 +18,7 @@ namespace Varyu.ExclusiveSpawner
         private int localPlayerId = -1;
         private VRCPlayerApi _localPlayer;
         private bool isAssigned = false;
+        private int checkedCount = 0;
         private int delayFrame => Random.Range(0, 30);
 
         void Start()
@@ -46,27 +49,15 @@ namespace Varyu.ExclusiveSpawner
                 if (RoomUserArray[i] == -1)
                 {
                     RoomUserArray[i] = localPlayerId;
+                    checkedCount = 0;
                     // 部屋の割り当てが成功したかチェックする
                     SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
                     return;
                 }
             }
+            // 空き部屋がなければランダムに割り当て
             TeleportSequence(Random.Range(0, RoomUserArray.Length));
             isAssigned = true;
-        }
-
-        private void TeleportSequence(int roomNumber)
-        {
-            // ワールドスポーンを移動
-            VRCWorldSpawn.position = SpawnPoints[roomNumber].position;
-            VRCWorldSpawn.rotation = SpawnPoints[roomNumber].rotation;
-
-            // そこにワープ
-            _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
-
-            // EnableObjectを移動して可視化
-            EnableObject.transform.position = SpawnPoints[roomNumber].position;
-            EnableObject.SetActive(true);
         }
 
         /// <summary>
@@ -81,15 +72,36 @@ namespace Varyu.ExclusiveSpawner
             {
                 if (RoomUserArray[i] == localPlayerId)
                 {
-                    // ちゃんと割り当てられていたらテレポート
-                    TeleportSequence(i);
-                    isAssigned = true;
+                    checkedCount++;
+
+                    if (checkedCount >= MAX_CHECK_COUNT)
+                    {
+                        // ちゃんと割り当てられていたらテレポート
+                        TeleportSequence(i);
+                        isAssigned = true;
+                        return;
+                    }
+                    // チェック回数足りなかったらランダム時間後に再度チェック
+                    SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
                     return;
                 }
 
             }
             // 割り当てが無かったら部屋の割り当てをランダムフレーム後に遅延実行
             SendCustomEventDelayedFrames(nameof(AssignRoom), delayFrame);
+        }
+        private void TeleportSequence(int roomNumber)
+        {
+            // ワールドスポーンを移動
+            VRCWorldSpawn.position = SpawnPoints[roomNumber].position;
+            VRCWorldSpawn.rotation = SpawnPoints[roomNumber].rotation;
+
+            // そこにワープ
+            _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
+
+            // EnableObjectを移動して可視化
+            EnableObject.transform.position = SpawnPoints[roomNumber].position;
+            EnableObject.SetActive(true);
         }
 
         public override void OnPlayerJoined(VRCPlayerApi player)
