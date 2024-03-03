@@ -10,6 +10,8 @@ namespace Varyu.ExclusiveSpawner
     {
         private const int MAX_CHECK_COUNT = 4;
 
+        [SerializeField] private DebugHelper debugHelper;
+
         [SerializeField] private Transform VRCWorldSpawn;
         [SerializeField] private Transform[] SpawnPoints;
         [SerializeField, Header("スポーン位置確定後に表示するObject")]
@@ -37,6 +39,22 @@ namespace Varyu.ExclusiveSpawner
             }
 
             localPlayerId = _localPlayer.playerId;
+        }
+
+        void Update()
+        {
+            if (_localPlayer == null) return;
+
+            if (debugHelper == null) return;
+
+            string log = "RoomUserArray: ";
+
+            for (int i = 0; i < RoomUserArray.Length; i++)
+            {
+                log += RoomUserArray[i] + ", ";
+            }
+
+            debugHelper.AddLog(log);
         }
 
         /// <summary>
