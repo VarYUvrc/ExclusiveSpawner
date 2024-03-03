@@ -12,14 +12,18 @@ namespace Varyu.ExclusiveSpawner
 
         [SerializeField] private Transform VRCWorldSpawn;
         [SerializeField] private Transform[] SpawnPoints;
-        [SerializeField] private GameObject EnableObject;
+        [SerializeField, Header("スポーン位置確定後に表示するObject")]
+        private GameObject EnableObject;
 
         [UdonSynced] public int[] RoomUserArray;
         private int localPlayerId = -1;
         private VRCPlayerApi _localPlayer;
-        private bool isAssigned = false;
+        private bool isFirstTime = true;
         private int checkedCount = 0;
+        /// <summary>一連のシークエンス内で用いる遅延実行間隔</summary>
         private int delayFrame => Random.Range(0, 30);
+        /// <summary>１回目の割り当て以降のチェック間隔</summary>
+        private int checkInterval => Random.Range(300, 600);
 
         void Start()
         {
@@ -43,21 +47,24 @@ namespace Varyu.ExclusiveSpawner
             RequestSerialization();
             Networking.SetOwner(_localPlayer, gameObject);
 
+            bool isAssined = false;
+
             for (int i = 0; i < RoomUserArray.Length; i++)
             {
                 // 空き部屋があったら自分のIdを登録する
                 if (RoomUserArray[i] == -1)
                 {
                     RoomUserArray[i] = localPlayerId;
-                    checkedCount = 0;
-                    // 部屋の割り当てが成功したかチェックする
-                    SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
-                    return;
+                    isAssined = true;
+                    break;
                 }
             }
             // 空き部屋がなければランダムに割り当て
-            TeleportSequence(Random.Range(0, RoomUserArray.Length));
-            isAssigned = true;
+            if (!isAssined) RoomUserArray[Random.Range(0, RoomUserArray.Length)] = localPlayerId;
+
+            // 部屋の割り当てが成功したかチェックする
+            checkedCount = 0;
+            SendCustomEventDelayedFrames(nameof(CheckAssign), delayFrame);
         }
 
         /// <summary>
@@ -65,20 +72,26 @@ namespace Varyu.ExclusiveSpawner
         /// </summary>
         public void CheckAssign()
         {
-            if (isAssigned) return;
-
             RequestSerialization();
             for (int i = 0; i < RoomUserArray.Length; i++)
             {
+                // 自分のIdがあったらチェックカウントを増やす
                 if (RoomUserArray[i] == localPlayerId)
                 {
                     checkedCount++;
 
-                    if (checkedCount >= MAX_CHECK_COUNT)
+                    // 初回は指定回数確認する　2回目以降は１回だけ
+                    if (checkedCount >= MAX_CHECK_COUNT || !isFirstTime)
                     {
-                        // ちゃんと割り当てられていたらテレポート
-                        TeleportSequence(i);
-                        isAssigned = true;
+                        // ちゃんと割り当てられていたらそこをスポーンにする
+                        SetSpawnPosition(i);
+                        // 初回ならそこにテレポート
+                        if (isFirstTime) _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
+                        isFirstTime = false;
+
+                        // チェックのループに入れる
+                        SendCustomEventDelayedFrames(nameof(CheckAssign), checkInterval);
+
                         return;
                     }
                     // チェック回数足りなかったらランダム時間後に再度チェック
@@ -90,14 +103,16 @@ namespace Varyu.ExclusiveSpawner
             // 割り当てが無かったら部屋の割り当てをランダムフレーム後に遅延実行
             SendCustomEventDelayedFrames(nameof(AssignRoom), delayFrame);
         }
-        private void TeleportSequence(int roomNumber)
+
+        /// <summary>
+        /// スポーン地点の指定と、周囲の可視化オブジェクトの移動
+        /// </summary>
+        /// <param name="roomNumber"></param>
+        private void SetSpawnPosition(int roomNumber)
         {
             // ワールドスポーンを移動
             VRCWorldSpawn.position = SpawnPoints[roomNumber].position;
             VRCWorldSpawn.rotation = SpawnPoints[roomNumber].rotation;
-
-            // そこにワープ
-            _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
 
             // EnableObjectを移動して可視化
             EnableObject.transform.position = SpawnPoints[roomNumber].position;
@@ -108,9 +123,11 @@ namespace Varyu.ExclusiveSpawner
         {
             // 必要なかったら終わり
             if (!Utilities.IsValid(player)) return;
-            if (!player.isLocal) return;
-
-            CheckAssign();
+            if (player.isLocal)
+            {
+                // 自分なら即時に割り当て実行
+                AssignRoom();
+            }
         }
 
         public override void OnPlayerLeft(VRCPlayerApi player)
