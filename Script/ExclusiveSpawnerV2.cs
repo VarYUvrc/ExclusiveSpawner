@@ -15,10 +15,11 @@ namespace Varyu.ExclusiveSpawner
         [SerializeField, Header("スポーン位置確定後に表示するObject")]
         private GameObject EnableObject;
 
-        [UdonSynced] public int[] RoomUserArray;
+        [UdonSynced] private int[] RoomUserArray;
         private int localPlayerId = -1;
         private VRCPlayerApi _localPlayer;
         private bool isFirstTime = true;
+        private bool isNeedTeleport = false;
         private int checkedCount = 0;
         /// <summary>一連のシークエンス内で用いる遅延実行間隔</summary>
         private int delayFrame => Random.Range(0, 30);
@@ -37,6 +38,8 @@ namespace Varyu.ExclusiveSpawner
             }
 
             localPlayerId = _localPlayer.playerId;
+
+            SetIsNeedTeleport(true);
         }
 
         /// <summary>
@@ -85,8 +88,6 @@ namespace Varyu.ExclusiveSpawner
                     {
                         // ちゃんと割り当てられていたらそこをスポーンにする
                         SetSpawnPosition(i);
-                        // 初回ならそこにテレポート
-                        if (isFirstTime) _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
                         isFirstTime = false;
 
                         // チェックのループに入れる
@@ -106,6 +107,7 @@ namespace Varyu.ExclusiveSpawner
 
         /// <summary>
         /// スポーン地点の指定と、周囲の可視化オブジェクトの移動
+        /// 必要であればテレポートも実行
         /// </summary>
         /// <param name="roomNumber"></param>
         private void SetSpawnPosition(int roomNumber)
@@ -117,6 +119,27 @@ namespace Varyu.ExclusiveSpawner
             // EnableObjectを移動して可視化
             EnableObject.transform.position = SpawnPoints[roomNumber].position;
             EnableObject.SetActive(true);
+
+            // テレポートが必要なら実行
+            if (isNeedTeleport) _localPlayer.TeleportTo(VRCWorldSpawn.position, VRCWorldSpawn.rotation);
+        }
+
+        /// <summary>
+        /// スポーン地点変更時にテレポートが必要かどうかを設定する
+        /// </summary>
+        /// <param name="value"></param>
+        public void SetIsNeedTeleport(bool value)
+        {
+            isNeedTeleport = value;
+        }
+
+        public override void OnPlayerRespawn(VRCPlayerApi player)
+        {
+            if (!Utilities.IsValid(player)) return;
+            if (!player.isLocal) return;
+
+            //リスポーンしたらテレポート対象となる
+            SetIsNeedTeleport(true);
         }
 
         public override void OnPlayerJoined(VRCPlayerApi player)
