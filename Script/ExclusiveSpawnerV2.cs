@@ -21,6 +21,7 @@ namespace Varyu.ExclusiveSpawner
         private bool isFirstTime = true;
         private bool isNeedTeleport = false;
         private int checkedCount = 0;
+        private int currentRoom = -1;
         /// <summary>一連のシークエンス内で用いる遅延実行間隔</summary>
         private int delayFrame => Random.Range(0, 30);
         /// <summary>１回目の割り当て以降のチェック間隔</summary>
@@ -86,9 +87,11 @@ namespace Varyu.ExclusiveSpawner
                     // 初回は指定回数確認する　2回目以降は１回だけ
                     if (checkedCount >= MAX_CHECK_COUNT || !isFirstTime)
                     {
-                        // ちゃんと割り当てられていたらそこをスポーンにする
-                        SetSpawnPosition(i);
                         isFirstTime = false;
+                        // ちゃんと割り当てられていたらそこをスポーンにする
+                        // 現在と異なる部屋の場合のみ処理を行う
+                        if (currentRoom != i) SetSpawnPosition(i);
+                        currentRoom = i;
 
                         // チェックのループに入れる
                         SendCustomEventDelayedFrames(nameof(CheckAssign), checkInterval);
